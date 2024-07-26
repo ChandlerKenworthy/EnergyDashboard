@@ -1,0 +1,68 @@
+body {
+    font-family: 'Lato';
+    background-color: #100030;
+}
+
+.title {
+    font-family: 'Lato', 'sans-serif';
+    font-weight: 700;
+    margin-left: 60px;
+    color: #60F0F8;
+}
+
+h2, h3, h4, h5, h6 {
+    font-family: 'Lato', 'sans-serif';
+    font-weight: 500;
+    color: #1f1f1f;
+}
+
+.small-title {
+    margin: 0;
+    padding: 0;
+    color: #100030;
+}
+
+.price-data {
+    font-size: 36px;
+    font-weight: 700;
+    margin: 0;
+    margin-top: 5px;
+    color: #de5cf0;
+}
+
+.kwh-data {
+    font-size: 16px;
+    font-weight: 300;
+    color: #a6a6a6;
+    margin: 0;
+}
+
+.row {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+    margin-top: 30px;
+    margin-bottom: 30px;
+    margin-left: 60px;
+    margin-right: 60px;
+    padding: 15px;
+    background-color: #fff;
+    border-radius: 20px;
+}
+
+.plot-wrapper {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+    margin-top: 5px;
+    margin-bottom: 30px;
+    margin-left: 60px;
+    margin-right: 60px;
+    background-color: #fff;
+    border-radius: 20px;
+}
+
+.col {
+    display: flex;
+    flex-direction: column;
+}

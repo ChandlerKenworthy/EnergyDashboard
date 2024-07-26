@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Meter Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;1,900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="row">
+        <div class="col">
+            <h3 class="small-title">Last Week</h3>
+            <p class="price-data">{{ last_week_usage }} kWh</p>
+            <p class="kwh-data">~£{{ last_price }} (Agile)</p>
+        </div>
+        <div class="col">
+            <h3 class="small-title">This Week</h3>
+            <p class="price-data">{{ this_week_usage }} kWh</p>
+            <p class="kwh-data">~£{{ this_price }} (Agile)</p>
+        </div>
+        <div class="col">
+            <h3 class="small-title">Current Agile Price</h3>
+            <p class="price-data">{{ current_agile_price }} p/kWh</p>
+            <p class="kwh-data">Standing Charge: {{ agile_charge }} p/day</p>
+        </div>
+        <div class="col">
+            <h3 class="small-title">Current Tariff Price</h3>
+            <p class="price-data">00.0 p/kWh</p>
+            <p class="kwh-data">Standing Charge: 00.0 p/day</p>
+        </div>
+    </div>
+
+    <h1 class="title">Electricity Usage</h1>
+    <div class="plot-wrapper">{{ usage_plot | safe }}</div>
+
+    <h1 class="title">Agile Tariff Price</h1>
+    <div class="plot-wrapper">{{ tariff_plot | safe }}</div>
+</body>
+</html>
