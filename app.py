@@ -6,120 +6,71 @@ from datetime import datetime, timedelta, timezone
 import numpy as np
 import os
 
+app = Flask(__name__)
+
 with open("api.key", "r") as f:
     API_KEY = f.read()
 
+def fetch_data(url):
+    """Fetch data from the given URL with authentication."""
+    response = requests.get(url, auth=(API_KEY, ''))
+    response.raise_for_status()  # Raise an exception for HTTP errors
+    return response.json()
+
 def fetch_current_agile_standing_charge():
-    url = f"https://api.octopus.energy/v1/products/AGILE-24-04-03/electricity-tariffs/E-1R-AGILE-24-04-03-A/standing-charges/"
+    url = "https://api.octopus.energy/v1/products/AGILE-24-04-03/electricity-tariffs/E-1R-AGILE-24-04-03-A/standing-charges/"
+    data = fetch_data(url)
+    return data['results'][0]['value_inc_vat']
 
-    response = requests.get(url, auth=(API_KEY, ''))
-    if response.status_code == 200:
-        json_response = response.json()
-        return json_response['results'][0]['value_inc_vat']
-
-def fetch_tarriff_data(ndays=7):
-    # Calculate the current date and the date one week ago
+def fetch_tariff_data(ndays=7):
     now = datetime.utcnow()
-    one_week_ago = now - timedelta(days=ndays)
+    start_date = (now - timedelta(days=ndays)).strftime('%Y-%m-%dT%H:%MZ')
+    end_date = now.strftime('%Y-%m-%dT%H:%MZ')
+    url = f"https://api.octopus.energy/v1/products/AGILE-24-04-03/electricity-tariffs/E-1R-AGILE-24-04-03-A/standard-unit-rates/?page_size=100&period_from={start_date}&period_to={end_date}&order_by=period"
+
+    all_data = []
+    while url:
+        data = fetch_data(url)
+        all_data.extend(data['results'])
+        url = data.get('next')
+
+    df = pd.DataFrame(all_data)
+    df['valid_from'] = pd.to_datetime(df['valid_from'], utc=True)
+    df['valid_to'] = pd.to_datetime(df['valid_to'], utc=True)
+    return df
     
-    # Format dates to the required format
-    period_from = one_week_ago.strftime('%Y-%m-%dT%H:%MZ')
-    period_to = now.strftime('%Y-%m-%dT%H:%MZ')
-
-    url = f"https://api.octopus.energy/v1/products/AGILE-24-04-03/electricity-tariffs/E-1R-AGILE-24-04-03-A/standard-unit-rates/?page_size=100&period_from={period_from}&period_to={period_to}&order_by=period"
-    response = requests.get(url, auth=(API_KEY, ''))
-    if response.status_code == 200:
-        # Build dataframe
-        json_response = response.json()
-        data = pd.DataFrame(columns=["value_inc_vat", "valid_from", "valid_to"])
-        viv, vf, vt = [], [], []
-        for entry in json_response['results']:
-            viv.append(entry['value_inc_vat'])
-            vf.append(entry['valid_from'])
-            vt.append(entry['valid_to'])
-
-        while json_response['next']:
-            response = requests.get(json_response['next'], auth=(API_KEY, ''))
-            if response.status_code != 200:
-                break
-            json_response = response.json()
-            for entry in json_response['results']:
-                viv.append(entry['value_inc_vat'])
-                vf.append(entry['valid_from'])
-                vt.append(entry['valid_to'])
-
-        data['value_inc_vat'] = viv
-        data['valid_from'] = pd.to_datetime(vf, utc=True)
-        data['valid_to'] = pd.to_datetime(vt, utc=True)
-        return data
-    else:
-        return None
-    
-def fetch_usage_data(ndays=7, force_fetch=False):    
-    # Check to see if data already exists, if it does don't re-send the request
-    if ("consumption.csv" in os.listdir("data")) and not force_fetch:
+def fetch_usage_data(ndays=7, force_fetch=False):
+    if not force_fetch and "consumption.csv" in os.listdir("data"):
         df = pd.read_csv("./data/consumption.csv", index_col=[0], parse_dates=['interval_start', 'interval_end'])
         df['interval_start'] = pd.to_datetime(df['interval_start'], utc=True)
         df['interval_end'] = pd.to_datetime(df['interval_end'], utc=True)
-        
-        # Convert datetime.utcnow() to an offset-aware datetime in UTC
         now = datetime.utcnow().replace(tzinfo=timezone.utc)
+        if (now - timedelta(days=1)) <= df['interval_start'].max():
+            return df
 
-        # If the data is more than 1 day out of date go and fetch new data
-        if (now - timedelta(days=1)) > (df['interval_start'].sort_values().iloc[-1]):
-            pass
-        else:
-            return df 
-
-    # Calculate the current date and the date one week ago
     now = datetime.utcnow()
-    one_week_ago = now - timedelta(days=ndays)
-    
-    # Format dates to the required format
-    period_from = one_week_ago.strftime('%Y-%m-%dT%H:%MZ')
-    period_to = now.strftime('%Y-%m-%dT%H:%MZ')
+    start_date = (now - timedelta(days=ndays)).strftime('%Y-%m-%dT%H:%MZ')
+    end_date = now.strftime('%Y-%m-%dT%H:%MZ')
+    url = f"https://api.octopus.energy/v1/electricity-meter-points/1419872111009/meters/23J0205738/consumption/?page_size=100&period_from={start_date}&period_to={end_date}&order_by=period"
 
-    # Define endpoint
-    url = f"https://api.octopus.energy/v1/electricity-meter-points/1419872111009/meters/23J0205738/consumption/?page_size=100&period_from={period_from}&period_to={period_to}&order_by=period"
+    all_data = []
+    while url:
+        data = fetch_data(url)
+        all_data.extend(data['results'])
+        url = data.get('next')
 
-    response = requests.get(url, auth=(API_KEY, ''))
-    if response.status_code == 200:
-        # Port to a nicer dataframe format
-        results = response.json()
-        data = pd.DataFrame(columns=["consumption", "interval_start", "interval_end"])
-        consumption, interval_start, interval_end = [], [], []
-
-        # Only returns 100 data points at a time need to iterate to grab all in the time period
-        while results['next']:
-            response = requests.get(results['next'], auth=(API_KEY, ''))
-            if response.status_code == 200:
-                results = response.json()
-                for entry in results['results']:
-                    consumption.append(entry['consumption'])
-                    interval_start.append(entry['interval_start'])
-                    interval_end.append(entry['interval_end'])
-            else:
-                break
-
-        data['consumption'] = consumption
-        data['interval_start'] = pd.to_datetime(interval_start, utc=True)
-        data['interval_end'] = pd.to_datetime(interval_end, utc=True)
-
-        # Write to file
-        data.to_csv("./data/consumption.csv")
-
-        return data
-    else:
-        return None
+    df = pd.DataFrame(all_data)
+    df['interval_start'] = pd.to_datetime(df['interval_start'], utc=True)
+    df['interval_end'] = pd.to_datetime(df['interval_end'], utc=True)
+    df.to_csv("./data/consumption.csv")
+    return df
 
 def process_usage_data(data):
-    # Midpoint of the 30min recording period
     dates = data['interval_start'] + (data['interval_end'] - data['interval_start']) / 2
     usage = data['consumption']
     return dates, usage
 
 def process_tariff_data(data):
-    # Midpoint of the 30min recording period
     dates = data['valid_from'] + (data['valid_to'] - data['valid_from']) / 2
     usage = data['value_inc_vat']
     return dates, usage
@@ -132,59 +83,36 @@ def create_tariff_plot(dates, usage):
     fig = px.line(x=dates, y=usage, title='Agile Energy Price', labels={'x': 'Date', 'y': 'Price (p/kWh)'})
     return fig.to_html()
 
-def get_usage_last_week(data):
+def get_usage_for_period(data, days_ago_start, days_ago_end):
     today = datetime.utcnow().replace(tzinfo=timezone.utc)
-    week_start = today - timedelta(days=14)
-    week_end = today - timedelta(days=7)
+    period_start = today - timedelta(days=days_ago_start)
+    period_end = today - timedelta(days=days_ago_end)
+    period_data = data[(data['interval_start'] > period_start) & (data['interval_start'] <= period_end)]
+    return np.sum(period_data['consumption'])
 
-    data = data[np.logical_and(
-        data['interval_start'] > week_start,
-        data['interval_start'] < week_end
-    )]
-    return f"{np.sum(data['consumption']):.2f}"
-
-def get_usage_this_week(data):
+def get_price_for_period(usage, tariff, days_ago_start, days_ago_end):
     today = datetime.utcnow().replace(tzinfo=timezone.utc)
-    week_start = today - timedelta(days=7)
-    data = data[data['interval_start'] > week_start]
-    return f"{np.sum(data['consumption']):.2f}"
-
-def get_price_this_week(usage, tariff):
-    # Calculates an approximate expenditure in GBP (inc. VAT) based on last weeks
-    # consumption and agile prices
-    today = datetime.utcnow().replace(tzinfo=timezone.utc)
-    week_start = today - timedelta(days=7)
-    usage = usage[usage['interval_start'] > week_start]
-    tariff = tariff[tariff['valid_from'] > week_start]
-    df = usage.join(tariff, how='outer').dropna(axis=0)
-    return np.sum(df['value_inc_vat'] * df['consumption']) / 100 # Convert to £'s
-
-def get_price_last_week(usage, tariff):
-    # Calculates an approximate expenditure in GBP (inc. VAT) based on last weeks
-    # consumption and agile prices
-    today = datetime.utcnow().replace(tzinfo=timezone.utc)
-    week_start = today - timedelta(days=14)
-    week_end = today - timedelta(days=7)
-    usage = usage[np.logical_and(usage['interval_start'] > week_start, usage['interval_start'] < week_end)]
-    tariff = tariff[np.logical_and(tariff['valid_from'] > week_start, tariff['valid_from'] < week_end)]
-    df = usage.join(tariff, how='outer').dropna(axis=0)
-    return np.sum(df['value_inc_vat'] * df['consumption']) / 100 # Convert to £'s
-
-app = Flask(__name__)
+    period_start = today - timedelta(days=days_ago_start)
+    period_end = today - timedelta(days=days_ago_end)
+    usage = usage[(usage['interval_start'] > period_start) & (usage['interval_start'] <= period_end)]
+    tariff = tariff[(tariff['valid_from'] > period_start) & (tariff['valid_from'] <= period_end)]
+    df = usage.join(tariff.set_index('valid_from'), on='interval_start', how='inner', rsuffix='_tariff').dropna()
+    return np.sum(df['value_inc_vat'] * df['consumption']) / 100  # Convert to £
 
 @app.route('/')
 def index():
-    tariff_data = fetch_tarriff_data(14)
+    tariff_data = fetch_tariff_data(14)
     usage_data = fetch_usage_data(14, force_fetch=False)
-    last_usage = get_usage_last_week(usage_data)
-    this_usage = get_usage_this_week(usage_data)
-    last_price = get_price_last_week(usage_data, tariff_data)
-    this_price = get_price_this_week(usage_data, tariff_data)
-    agile_price = tariff_data.sort_values("valid_from", ascending=False).iloc[0]['value_inc_vat']
-    agile_charge = fetch_current_agile_standing_charge()
-
+    
     if usage_data.empty:
         return "Error fetching data from the API"
+
+    last_usage = get_usage_for_period(usage_data, 14, 7)
+    this_usage = get_usage_for_period(usage_data, 7, 0)
+    last_price = get_price_for_period(usage_data, tariff_data, 14, 7)
+    this_price = get_price_for_period(usage_data, tariff_data, 7, 0)
+    current_agile_price = tariff_data.sort_values("valid_from", ascending=False).iloc[0]['value_inc_vat']
+    agile_charge = fetch_current_agile_standing_charge()
 
     usage_dates, usage_values = process_usage_data(usage_data)
     usage_plot = create_usage_plot(usage_dates, usage_values)
@@ -195,11 +123,11 @@ def index():
         'index.html', 
         usage_plot=usage_plot, 
         tariff_plot=tariff_plot,
-        last_week_usage=last_usage, 
-        this_week_usage=this_usage,
+        last_week_usage=f"{last_usage:.2f}", 
+        this_week_usage=f"{this_usage:.2f}",
         this_price=f"{this_price:.2f}",
         last_price=f"{last_price:.2f}",
-        current_agile_price=f"{agile_price:.1f}",
+        current_agile_price=f"{current_agile_price:.1f}",
         agile_charge=f"{agile_charge:.1f}"
     )
 
