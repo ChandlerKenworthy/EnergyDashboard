@@ -118,6 +118,15 @@ def index():
     usage_plot = create_usage_plot(usage_dates, usage_values)
     tariff_dates, tariff_values = process_tariff_data(tariff_data)
     tariff_plot = create_tariff_plot(tariff_dates, tariff_values)
+    tariff_charge = fetch_data("https://api.octopus.energy/v1/products/VAR-22-11-01/electricity-tariffs/E-2R-VAR-22-11-01-E/standing-charges/")['results']
+    latest_date = datetime.utcnow().replace(tzinfo=timezone.utc) - timedelta(days=365)
+    tariff_charge_value = 0
+    for t in tariff_charge:
+        if (t['payment_method'] == "DIRECT_DEBIT"):
+            valid_from = pd.to_datetime(t['valid_from'], utc=True)
+            if valid_from > latest_date:
+                tariff_charge_value = t['value_inc_vat']
+                latest_date = valid_from
 
     return render_template(
         'index.html', 
@@ -128,7 +137,8 @@ def index():
         this_price=f"{this_price:.2f}",
         last_price=f"{last_price:.2f}",
         current_agile_price=f"{current_agile_price:.1f}",
-        agile_charge=f"{agile_charge:.1f}"
+        agile_charge=f"{agile_charge:.1f}",
+        tariff_charge=f"{tariff_charge_value:.1f}"
     )
 
 if __name__ == '__main__':
