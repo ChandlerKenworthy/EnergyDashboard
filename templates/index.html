@@ -12,6 +12,11 @@
 </head>
 <body>
     <div class="row">
+        <form action="{{ url_for('refresh_data') }}" method="post">
+            <button type="submit">Refresh Data</button>
+        </form>
+    </div>
+    <div class="row">
         <div class="col">
             <h3 class="small-title">Last Week</h3>
             <p class="price-data">{{ last_week_usage }} kWh</p>
@@ -28,8 +33,13 @@
             <p class="kwh-data">Standing Charge: {{ agile_charge }} p/day</p>
         </div>
         <div class="col">
-            <h3 class="small-title">Current Tariff Price</h3>
-            <p class="price-data">00.0 p/kWh</p>
+            <h3 class="small-title">Current Tariff Day Price</h3>
+            <p class="price-data">{{ tariff_rate_day }} p/kWh</p>
+            <p class="kwh-data">Standing Charge: {{ tariff_charge }} p/day</p>
+        </div>
+        <div class="col">
+            <h3 class="small-title">Current Tariff Night Price</h3>
+            <p class="price-data">{{ tariff_rate_night }} p/kWh</p>
             <p class="kwh-data">Standing Charge: {{ tariff_charge }} p/day</p>
         </div>
     </div>

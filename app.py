@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, render_template_string
+from flask import Flask, render_template, jsonify, render_template_string, redirect, url_for
 import requests
 import plotly.express as px
 import pandas as pd
@@ -77,10 +77,12 @@ def process_tariff_data(data):
 
 def create_usage_plot(dates, usage):
     fig = px.line(x=dates, y=usage, title='Energy Usage Over Time', labels={'x': 'Date', 'y': 'Usage (kWh)'})
+    fig.update_traces(line=dict(color='#de5cf0'))
     return fig.to_html()
 
 def create_tariff_plot(dates, usage):
     fig = px.line(x=dates, y=usage, title='Agile Energy Price', labels={'x': 'Date', 'y': 'Price (p/kWh)'})
+    fig.update_traces(line=dict(color='#de5cf0'))
     return fig.to_html()
 
 def get_usage_for_period(data, days_ago_start, days_ago_end):
@@ -99,10 +101,49 @@ def get_price_for_period(usage, tariff, days_ago_start, days_ago_end):
     df = usage.join(tariff.set_index('valid_from'), on='interval_start', how='inner', rsuffix='_tariff').dropna()
     return np.sum(df['value_inc_vat'] * df['consumption']) / 100  # Convert to £
 
+def get_tariff_charge():
+    charges = fetch_data("https://api.octopus.energy/v1/products/VAR-22-11-01/electricity-tariffs/E-2R-VAR-22-11-01-E/standing-charges/")['results']
+    latest_date = datetime.utcnow().replace(tzinfo=timezone.utc) - timedelta(days=365)
+    tariff_charge_value = 0
+    for t in charges:
+        if (t['payment_method'] == "DIRECT_DEBIT"):
+            valid_from = pd.to_datetime(t['valid_from'], utc=True)
+            if valid_from > latest_date:
+                tariff_charge_value = t['value_inc_vat']
+                latest_date = valid_from
+    return tariff_charge_value
+
+def get_tariff_rate():
+    day_charges = fetch_data("https://api.octopus.energy/v1/products/VAR-22-11-01/electricity-tariffs/E-2R-VAR-22-11-01-E/day-unit-rates/")['results']
+    night_charges = fetch_data("https://api.octopus.energy/v1/products/VAR-22-11-01/electricity-tariffs/E-2R-VAR-22-11-01-E/night-unit-rates/")['results']
+    latest_date = datetime.utcnow().replace(tzinfo=timezone.utc) - timedelta(days=365)
+    tariff_day_rate_value, tariff_night_rate_value = 0, 0
+    for t in day_charges:
+        if (t['payment_method'] == "DIRECT_DEBIT"):
+            valid_from = pd.to_datetime(t['valid_from'], utc=True)
+            if valid_from > latest_date:
+                tariff_day_rate_value = t['value_inc_vat']
+                latest_date = valid_from
+    latest_date = datetime.utcnow().replace(tzinfo=timezone.utc) - timedelta(days=365)
+    for t in night_charges:
+        if (t['payment_method'] == "DIRECT_DEBIT"):
+            valid_from = pd.to_datetime(t['valid_from'], utc=True)
+            if valid_from > latest_date:
+                tariff_night_rate_value = t['value_inc_vat']
+                latest_date = valid_from
+    return tariff_day_rate_value, tariff_night_rate_value
+
 @app.route('/')
 def index():
+    return render_dashboard()
+
+@app.route('/refresh', methods=['POST'])
+def refresh_data():
+    return render_dashboard(force_refresh=True)
+
+def render_dashboard(force_refresh=False):
     tariff_data = fetch_tariff_data(14)
-    usage_data = fetch_usage_data(14, force_fetch=False)
+    usage_data = fetch_usage_data(14, force_fetch=force_refresh)
     
     if usage_data.empty:
         return "Error fetching data from the API"
@@ -118,15 +159,8 @@ def index():
     usage_plot = create_usage_plot(usage_dates, usage_values)
     tariff_dates, tariff_values = process_tariff_data(tariff_data)
     tariff_plot = create_tariff_plot(tariff_dates, tariff_values)
-    tariff_charge = fetch_data("https://api.octopus.energy/v1/products/VAR-22-11-01/electricity-tariffs/E-2R-VAR-22-11-01-E/standing-charges/")['results']
-    latest_date = datetime.utcnow().replace(tzinfo=timezone.utc) - timedelta(days=365)
-    tariff_charge_value = 0
-    for t in tariff_charge:
-        if (t['payment_method'] == "DIRECT_DEBIT"):
-            valid_from = pd.to_datetime(t['valid_from'], utc=True)
-            if valid_from > latest_date:
-                tariff_charge_value = t['value_inc_vat']
-                latest_date = valid_from
+    tariff_charge = get_tariff_charge()
+    tariff_rate_day, tariff_rate_night = get_tariff_rate()
 
     return render_template(
         'index.html', 
@@ -138,7 +172,9 @@ def index():
         last_price=f"{last_price:.2f}",
         current_agile_price=f"{current_agile_price:.1f}",
         agile_charge=f"{agile_charge:.1f}",
-        tariff_charge=f"{tariff_charge_value:.1f}"
+        tariff_charge=f"{tariff_charge:.1f}",
+        tariff_rate_day=f"{tariff_rate_day:.1f}",
+        tariff_rate_night=f"{tariff_rate_night:.1f}"
     )
 
 if __name__ == '__main__':
