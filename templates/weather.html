@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Meter Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='weather.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;1,900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
+    <script src="https://kit.fontawesome.com/d5370e19a0.js" crossorigin="anonymous"></script>
+</head>
+<body>
+    <h1>Weather Dashboard</h1>
+    <div class="row centering">
+        <div class="column align-center col-1 smooth-edge cta-bar">
+            <div class="row cta-header">
+                <h3 class="text-thick text-dark text-14">Selly Park, Birmingham</h3>
+                <i class="fa-solid fa-location-dot"></i>
+            </div>
+            <div class="row row-center bkg-mid-grey smooth-edge grow-1">
+                <p>Profile</p>
+            </div>
+            <div class="row row-center bkg-mid-grey smooth-edge grow-1 is-active">
+                <p>Weather</p>
+            </div>
+            <div class="row row-center bkg-mid-grey smooth-edge grow-1">
+                <p>Forecast</p>
+            </div>
+            <div class="row row-center bkg-mid-grey smooth-edge grow-1">
+                <p>Overview</p>
+            </div>
+            <div class="row row-center bkg-mid-grey smooth-edge grow-1">
+                <p>Usage</p>
+            </div>
+        </div>
+        <div class="column align-center justify-top col-3 smooth-edge main-overview">
+            <h3>Last Updated: {{ last_update_time }}</h3>
+            <div class="row row-spread">
+                <h3><a href="#" class="text-thick">Today</a></h3>
+                <h3><a href="#" class="text-thick">Tomorrow</a></h3>
+                <h3><a href="#" class="text-thick is-active">5-day Forecast</a></h3>
+            </div>
+            <div class="row">
+                <div class="row weather-info-wrapper">
+                    <div class="column align-center bkg-mid-grey weather-info-box">
+                        <div class="title-wrapper">
+                            <h3>{{ short_current_day }}</h3>
+                        </div>
+                        <div class="column">
+                            <div class="row row-center">
+                                <p class="text-current-temp">{{ current_temp }}&deg;</p>
+                                <i class="fa-solid fa-cloud-sun"></i>
+                            </div>
+                            <p>Feels like: <span class="white-data">{{ feels_like }}&deg;</span></p>
+                            <p>Sunrise: <span class="white-data">05:32 AM</span></p>
+                            <p>Sunset: <span class="white-data">21:37 PM</span></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="column align-center space-between single-day-forecast bkg-mid-grey">
+                        <div class="weather-icon">
+                            <i class="fa-solid fa-cloud-sun-rain"></i>
+                        </div>
+                        <div class="description">
+                            <p class="text-center text-upper">{{ days_forecast[0] }}</p>
+                            <p class="text-center text-thick temp">{{ temp_forecast[0] }}&deg;</p>
+                        </div>
+                    </div>
+                    <div class="column align-center space-between single-day-forecast bkg-mid-grey">
+                        <div class="weather-icon">
+                            <i class="fa-regular fa-sun"></i>
+                        </div>
+                        <div class="description">
+                            <p class="text-center text-upper">{{ days_forecast[1] }}</p>
+                            <p class="text-center text-thick temp">{{ temp_forecast[1] }}&deg;</p>
+                        </div>
+                    </div>
+                    <div class="column align-center space-between single-day-forecast bkg-mid-grey">
+                        <div class="weather-icon">
+                            <i class="fa-regular fa-sun"></i>
+                        </div>
+                        <div class="description">
+                            <p class="text-center text-upper">{{ days_forecast[2] }}</p>
+                            <p class="text-center text-thick temp">{{ temp_forecast[2] }}&deg;</p>
+                        </div>
+                    </div>
+                    <div class="column align-center space-between single-day-forecast bkg-mid-grey">
+                        <div class="weather-icon">
+                            <i class="fa-solid fa-cloud-rain"></i>
+                        </div>
+                        <div class="description">
+                            <p class="text-center text-upper">{{ days_forecast[3] }}</p>
+                            <p class="text-center text-thick temp">{{ temp_forecast[3] }}&deg;</p>
+                        </div>
+                    </div>
+                    <div class="column align-center space-between single-day-forecast bkg-mid-grey">
+                        <div class="weather-icon">
+                            <i class="fa-solid fa-cloud-sun-rain"></i>
+                        </div>
+                        <div class="description">
+                            <p class="text-center text-upper">{{ days_forecast[4] }}</p>
+                            <p class="text-center text-thick temp">{{ temp_forecast[4] }}&deg;</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="column col-1 smooth-edge extra-info">
+            <p>Some more weather information goes here</p>
+        </div>
+    </div>
+</body>
+</html>

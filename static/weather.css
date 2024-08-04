@@ -1,0 +1,267 @@
+/* Basic global styling */
+body {
+    background-color: rgb(14,14,14);
+}
+
+p, h1, h2, h3, h4, h5, h6 {
+    color: rgb(255, 255, 255);
+    font-family: 'Lato', sans-serif;
+    font-weight: 300;
+}
+
+a {
+    text-decoration: none;
+    color: rgb(255, 255, 255);
+}
+
+a.is-active {
+    color: rgb(255,255,255)
+}
+
+/* Grid and layout styling */
+.row {
+    display: flex;
+    flex-direction: row;
+    align-items: top;
+    justify-content: space-between;
+}
+
+.row-center {
+    align-items: center;
+    justify-content: center;
+}
+
+.row-spread {
+    align-items: center;
+    justify-content: space-between;
+}
+
+.column {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.align-center {
+    align-items: center;
+}
+
+.space-between {
+    justify-content: space-between;
+}
+
+.justify-top {
+    justify-content: flex-start;
+}
+
+.smooth-edge {
+    border-radius: 20px;
+}
+
+.col-1 {
+    flex: 1 1 0;
+}
+
+.col-2 {
+    flex: 2 1 0;
+}
+
+.col-3 {
+    flex: 3 1 0;
+}
+
+.col-4 {
+    flex: 4 1 0;
+}
+
+.col-5 {
+    flex: 5 1 0;
+}
+
+.centering {
+    margin: 0 auto;
+    padding: 0;
+    max-width: 1200px;
+}
+
+.bkg-mid-grey {
+    background-color: rgb(47,47,49);
+}
+
+.grow-1 {
+    flex-grow: 1;
+    width: 100%;
+}
+
+/* Specific column-wise styles */
+.cta-bar {
+    background-color: rgb(128,194,217);
+    padding: 50px 20px;
+}
+
+.cta-bar h3 {
+    margin: 0;
+    margin-right: 10px;
+}
+
+.cta-bar .cta-header {
+    margin-bottom: 15px;
+}
+
+.cta-bar .row.is-active {
+    background-color: rgb(149,149,149);
+}
+
+.cta-bar .row.is-active p {
+    color: rgb(14,14,14);
+}
+
+.cta-bar .row:hover {
+    transition: .2s ease-in-out;
+    background-color: rgb(149,149,149);
+}
+
+.cta-bar .row p {
+    font-size: 20px;
+    margin: 8px 0;
+}
+
+.cta-bar .row-center {
+    margin: 15px 0;
+}
+
+.cta-bar .row-center:last-child {
+    margin-bottom: 0;
+}
+
+.main-overview {
+    border: 1px solid white;
+    padding: 5px 20px;
+}
+
+.main-overview .row-spread {
+    width: 50%;
+    text-align: center;
+}
+
+.main-overview .row-spread a {
+    color: rgb(149,149,149);
+}
+
+.main-overview .row-spread a.is-active {
+    color: rgb(255,255,255)
+}
+
+.main-overview .single-day-forecast {
+    margin: 0 5px;
+    border-radius: 15px;
+}
+
+.weather-info-wrapper {
+    margin-right: 15px;
+}
+
+.main-overview .single-day-forecast .weather-icon {
+    color: rgb(255, 255, 255);
+    font-size: 30px;
+    padding: 0 15px;
+    background-color: rgb(149,149,149);
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+}
+
+.main-overview .single-day-forecast .description,
+.main-overview .single-day-forecast .weather-icon {
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    display: flex;
+    flex-direction: column;
+}
+
+.main-overview .single-day-forecast .description p {
+    font-size: 10px;
+    margin: 0;
+}
+
+.main-overview .single-day-forecast .description p.temp {
+    font-size: 18px;
+    margin: 0;
+    margin-top: 6px;
+}
+
+.extra-info {
+    border: 1px solid white;
+    padding: 5px 20px;
+}
+
+.weather-info-box {
+    box-sizing: border-box;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    padding-bottom: 15px;
+    border-bottom-left-radius: 20px;
+    border-bottom-right-radius: 20px;
+}
+
+.weather-info-box .title-wrapper {
+    box-sizing: border-box;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    background-color: rgb(128,194,217);
+    width: 100%;
+}
+
+.weather-info-box .title-wrapper h3 {
+    color: rgb(47,47,49);
+    font-weight: 700;
+    margin: 5px 0;
+    margin-left: 80px;
+    margin-right: 80px;
+    text-align: center;
+}
+
+.weather-info-box p {
+    color: rgb(149,149,149);
+    font-weight: 700;
+    font-size: 12px;
+    margin: 3px 0;
+}
+
+.weather-info-box .row-center i {
+    font-size: 30px;
+    color: rgb(128,194,217);
+}
+
+.weather-info-box p.text-current-temp {
+    font-size: 30px;
+    margin: 8px 0;
+    margin-right: 10px;
+    color: rgb(128,194,217);
+}
+
+.weather-info-box .white-data {
+    color: rgb(255,255,255);
+    font-weight: 500;
+}
+
+/* Font styling */
+.text-thick {
+    font-weight: 700;
+}
+
+.text-dark {
+    color: rgb(14,14,14);
+}
+
+.text-14 {
+    font-size: 14px;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.text-upper {
+    text-transform: uppercase;
+}

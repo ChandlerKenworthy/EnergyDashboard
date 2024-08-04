@@ -4,12 +4,67 @@ import plotly.express as px
 import pandas as pd
 from datetime import datetime, timedelta, timezone
 import numpy as np
+import urllib.request
+import matplotlib.pyplot as plt
+import io
+import base64
 import os
 
 app = Flask(__name__)
 
 with open("api.key", "r") as f:
     API_KEY = f.read()
+
+with open("weather_api.key", "r") as f:
+    data = f.readlines()
+    WEATHER_KEY = data[0]
+    postcode1, postcode2 = data[1].split(":")
+
+def fetch_weather_forecast(filename="weather_forecast.csv"):
+    """Get the 15-day weather forecast for Birmingham, UK return result as a dataframe with a datetime index"""
+    base_dir = "/Users/chandler/Documents/Coding/EnergyDashboard/data"
+    if os.path.exists(f"{base_dir}/{filename}"):
+        file_mtime = datetime.fromtimestamp(os.path.getmtime(f"{base_dir}/{filename}"))
+        if datetime.utcnow() - file_mtime < timedelta(days=1): # File made within the last day
+            return pd.read_csv(f"{base_dir}/{filename}", index_col=["datetime"], parse_dates=["datetime"]).sort_index(ascending=True)
+
+    url = f"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/{postcode1}%20{postcode2}?unitGroup=metric&include=days&key={WEATHER_KEY}&contentType=csv"
+    ResultBytes = urllib.request.urlopen(url)
+    # Parse the results as CSV
+    df = pd.read_csv(ResultBytes)
+    df.drop(["name", "stations", "preciptype", "icon"], inplace=True, axis=1)
+    df.set_index("datetime", inplace=True)
+    df.sort_index(ascending=True, inplace=True) # Rows progress towards later dates
+    df.to_csv(f"{base_dir}/{filename}")
+    return df
+
+def fetch_weather_data(filename="weather_data.csv"):
+    # Default URL for if no current data exists
+    today = datetime.now()
+    start = (today - timedelta(days=31)).strftime("%Y-%m-%d")
+    today = today.strftime("%Y-%m-%d")
+    url = f"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/{postcode1}%20{postcode2}/{start}/{today}?unitGroup=metric&include=hours&key={WEATHER_KEY}&contentType=csv"
+
+    base_dir = "/Users/chandler/Documents/Coding/EnergyDashboard/data"
+    if os.path.exists(f"{base_dir}/{filename}"):
+        file_mtime = datetime.fromtimestamp(os.path.getmtime(f"{base_dir}/{filename}"))
+        if datetime.utcnow() - file_mtime < timedelta(days=1):
+            return pd.read_csv(f"{base_dir}/{filename}", index_col=["datetime"], parse_dates=["datetime"]).sort_index(ascending=False)
+        else:
+            # File exists but is out-of-date get data from the last datetime to now and append to existing
+            df = pd.read_csv(f"{base_dir}/{filename}", index_col=["datetime"], parse_dates=["datetime"]).sort_index(ascending=False)
+            most_recent_date = datetime(df.index[0]).strftime("%Y-%m-%d")
+            today = datetime.now().strftime("%Y-%m-%d")
+            url = f"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/{postcode1}%20{postcode2}/{most_recent_date}/{today}?unitGroup=metric&include=hours&key={WEATHER_KEY}&contentType=csv"
+        
+    # TODO: Get data from the API instead -- url should be properly done
+    ResultBytes = urllib.request.urlopen(url)
+    # Parse the results as CSV
+    df = pd.read_csv(ResultBytes).sort_index(ascending=False) # latest data is top of the dataframe
+    df.drop(["name", "stations", "preciptype", "icon"], inplace=True, axis=1)
+    df.set_index("datetime", inplace=True)
+    df.to_csv(f"{base_dir}/{filename}")
+    return df
 
 def fetch_data(url):
     """Fetch data from the given URL with authentication."""
@@ -133,9 +188,69 @@ def get_tariff_rate():
                 latest_date = valid_from
     return tariff_day_rate_value, tariff_night_rate_value
 
+def get_windspeed_plot(df):
+    today = pd.Timestamp('now').normalize()
+    filtered_df = df[df.index.normalize() == today]
+
+    fig, ax = plt.subplots(figsize=(8, 2))  # Adjust the figsize as needed
+    
+    # Plotting the windspeed data
+    ax.plot(filtered_df.index.strftime('%H'), filtered_df['windspeed'], color='blue', linewidth=2)
+
+    # Remove background, ticks, and labels
+    ax.set_facecolor('none')
+    ax.xaxis.set_visible(False)
+    ax.yaxis.set_visible(False)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+
+    # Adjust the plot limits to avoid cropping
+    ax.set_xlim(0, 23)
+    ax.set_ylim(min(filtered_df['windspeed']) - 1, max(filtered_df['windspeed']) + 1)
+
+    # Save the plot to a BytesIO object
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png', transparent=True, bbox_inches='tight', pad_inches=0)
+    plt.close(fig)
+    buf.seek(0)
+    
+    # Encode the image to base64 for embedding in HTML
+    image_base64 = base64.b64encode(buf.getvalue()).decode('utf8')
+
+    return image_base64
+
 @app.route('/')
 def index():
     return render_dashboard()
+
+@app.route('/weather')
+def weather():
+    weather_data = fetch_weather_data() # pd.DataFrame (hourly)
+    forecast_data = fetch_weather_forecast() # pd.DataFrame (daily)
+
+    windspeed_plot = 0#get_windspeed_plot(weather_data)
+
+    # Find the row whose timestamp is the closest (hourly)
+    current_time = pd.Timestamp('now')
+    time_diff = np.abs(weather_data.index - current_time)
+    closest_index = time_diff.argmin()
+    current_row = weather_data.iloc[closest_index]
+
+    days_5_day_forecast = [forecast_data.iloc[i].name.strftime('%a') for i in range(1, 6)]
+    temp_forecast = [f"{forecast_data.iloc[i].tempmax:.0f}" for i in range(1, 6)]
+
+    return render_template(
+        'weather.html',
+        current_temp=f"{current_row['temp']:.1f}",
+        feels_like=f"{current_row['feelslike']:.1f}",
+        last_update_time=weather_data.iloc[0].name.strftime('%d/%m/%Y - %H:%M'),
+        short_current_day=weather_data.iloc[0].name.strftime('%a'),
+        days_forecast=days_5_day_forecast,
+        temp_forecast=temp_forecast,
+        windspeed_plot=windspeed_plot
+    )
 
 @app.route('/refresh', methods=['POST'])
 def refresh_data():
@@ -147,6 +262,8 @@ def render_dashboard(force_refresh=False):
     
     if usage_data.empty:
         return "Error fetching data from the API"
+    
+    weather_data = fetch_weather_data().iloc[0] # Most recent row of data
 
     last_usage = get_usage_for_period(usage_data, 14, 7)
     this_usage = get_usage_for_period(usage_data, 7, 0)
@@ -174,7 +291,13 @@ def render_dashboard(force_refresh=False):
         agile_charge=f"{agile_charge:.1f}",
         tariff_charge=f"{tariff_charge:.1f}",
         tariff_rate_day=f"{tariff_rate_day:.1f}",
-        tariff_rate_night=f"{tariff_rate_night:.1f}"
+        tariff_rate_night=f"{tariff_rate_night:.1f}",
+        last_temperature=f"{weather_data['temp']:.1f}",
+        last_feelslike=f"{weather_data['feelslike']:.1f}",
+        last_humidity=f"{weather_data['humidity']:.1f}",
+        last_wind_speed=f"{weather_data['windspeed']:.1f}",
+        last_windgust=f"{weather_data['windgust']:.1f}",
+        last_precip=f"{weather_data['precip']:.1f}"
     )
 
 if __name__ == '__main__':

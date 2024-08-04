@@ -16,6 +16,27 @@
             <button type="submit">Refresh Data</button>
         </form>
     </div>
+    <h1 class="title">Weather at Home</h1>
+    <div class="row">
+        <div class="col">
+            <h3 class="small-title">Current Temperature</h3>
+            <p class="price-data">{{ last_temperature }} C</p>
+            <p class="kwh-data">Feels like {{ last_feelslike }} C</p>
+        </div>
+        <div class="col">
+            <h3 class="small-title">Precipitation</h3>
+            <p class="price-data">{{ last_precip }} mm/hr</p>
+        </div>
+        <div class="col">
+            <h3 class="small-title">Wind Speed</h3>
+            <p class="price-data">{{ last_wind_speed }} m/s</p>
+            <p class="kwh-data">Gusts up to {{ last_windgust }} m/s</p>
+        </div>
+        <div class="col">
+            <h3 class="small-title">Humidity</h3>
+            <p class="price-data">{{ last_humidity }} %</p>
+        </div>
+    </div>
     <div class="row">
         <div class="col">
             <h3 class="small-title">Last Week</h3>
